@@ -40,6 +40,7 @@ func TestDecodeFrameRejectsCorruptionAndOversize(t *testing.T) {
 		{name: "bad magic", data: append([]byte("BAD!"), valid[4:]...), max: 1024},
 		{name: "bad version", data: mutateByte(valid, 4, 2), max: 1024},
 		{name: "bad encoding", data: mutateByte(valid, 5, 2), max: 1024},
+		{name: "bad reserved", data: mutateByte(valid, 22, 1), max: 1024},
 		{name: "bad payload length", data: mutatePayloadLength(valid, 100), max: 1024},
 		{name: "odd pcm payload", data: EncodeFrame(1, 0, []byte{0}), max: 1024},
 		{name: "oversize", data: valid, max: 1},

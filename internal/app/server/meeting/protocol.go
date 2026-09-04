@@ -49,6 +49,9 @@ func DecodeFrame(data []byte, maxPayload int) (Frame, error) {
 	if data[5] != frameEncodingPCM {
 		return Frame{}, fmt.Errorf("unsupported meeting frame encoding: %d", data[5])
 	}
+	if data[22] != 0 || data[23] != 0 {
+		return Frame{}, fmt.Errorf("meeting frame reserved field must be zero")
+	}
 	payloadLen := binary.LittleEndian.Uint32(data[18:22])
 	if payloadLen > uint32(len(data)-FrameHeaderSize) || int(payloadLen) != len(data)-FrameHeaderSize {
 		return Frame{}, fmt.Errorf("meeting frame payload length mismatch: header=%d actual=%d", payloadLen, len(data)-FrameHeaderSize)
