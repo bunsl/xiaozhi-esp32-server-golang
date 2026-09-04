@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/spf13/viper"
 
 	"xiaozhi-esp32-server-golang/internal/app/server/auth"
+	"xiaozhi-esp32-server-golang/internal/app/server/meeting"
 	"xiaozhi-esp32-server-golang/internal/app/server/types"
 	"xiaozhi-esp32-server-golang/internal/domain/mcp"
 	"xiaozhi-esp32-server-golang/internal/domain/openclaw"
@@ -106,6 +108,7 @@ func (s *WebSocketServer) Start() error {
 	// 注册路由处理器
 	http.HandleFunc("/xiaozhi/mqtt_udp/v1/", s.handleMqttUdpChat)
 	http.HandleFunc("/xiaozhi/v1/", s.handleChat)
+	http.HandleFunc("/xiaozhi/meeting/v1/", meeting.NewHandler(viper.GetString("meeting.storage_dir")).ServeHTTP)
 	http.HandleFunc("/xiaozhi/ota/", s.handleOta)
 	http.HandleFunc("/xiaozhi/ota/activate", s.handleOtaActivate)
 	http.HandleFunc("/mcp", s.handleMCPWebSocket)

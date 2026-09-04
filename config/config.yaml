@@ -64,6 +64,10 @@ websocket:
   host: "0.0.0.0"  # 监听地址，0.0.0.0表示监听所有网卡
   port: 8989       # WebSocket监听端口
 
+# 会议音频上传配置
+meeting:
+  storage_dir: "data/meetings"  # 双麦 PCM 流式落盘目录
+
 # MQTT客户端配置（连接外部MQTT服务器）
 mqtt:
   enable: true                # 是否启用MQTT客户端, 当此值为false时会同时关闭udp服务器
