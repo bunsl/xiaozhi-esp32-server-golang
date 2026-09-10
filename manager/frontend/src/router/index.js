@@ -275,6 +275,18 @@ const routes = [
         meta: { title: '我的知识库' }
       },
       {
+        path: '/user/meetings',
+        name: 'UserMeetings',
+        component: () => import('../views/user/Meetings.vue'),
+        meta: { title: '会议记录' }
+      },
+      {
+        path: '/user/meetings/:id',
+        name: 'UserMeetingDetail',
+        component: () => import('../views/user/MeetingDetail.vue'),
+        meta: { title: '会议详情' }
+      },
+      {
         path: 'user/roles',
         name: 'UserRoles',
         component: () => import('../views/user/Roles.vue'),

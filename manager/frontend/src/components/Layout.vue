@@ -59,6 +59,11 @@
               <span>我的知识库</span>
             </el-menu-item>
 
+            <el-menu-item v-if="!authStore.isAdmin" index="/user/meetings">
+              <el-icon><DataAnalysis /></el-icon>
+              <span>会议记录</span>
+            </el-menu-item>
+
             <el-sub-menu v-if="authStore.isAdmin" index="/admin/service-config">
               <template #title>
                 <el-icon><Tools /></el-icon>

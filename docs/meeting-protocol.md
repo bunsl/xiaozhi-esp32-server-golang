@@ -27,6 +27,20 @@ ws://<server>:8989/xiaozhi/meeting/v1/?device_id=<device-id>
 
 服务端返回 `meeting.ready`。`sample_rate` 当前支持 8000～48000 Hz，`channels` 支持 1 或 2。
 
+ASR 可用时，服务端会在录音过程中发送实时转写：
+
+```json
+{
+  "type": "meeting.transcript",
+  "meeting_id": "20260904-001",
+  "text": "正在讨论下一阶段计划",
+  "speaker": "张三",
+  "is_final": true
+}
+```
+
+`is_final=false` 表示可被后续结果替换的临时文本；`is_final=true` 表示可写入会议记录的确定分段。已登记且匹配成功的声纹显示姓名，否则显示“未知发言人”。
+
 随后每个 WebSocket 二进制消息都是一个会议帧：
 
 | 偏移 | 大小 | 字段 | 编码 |
@@ -70,7 +84,8 @@ ws://<server>:8989/xiaozhi/meeting/v1/?device_id=<device-id>
 
 ## 当前范围
 
-- 已实现：会议生命周期、帧校验、序号丢失统计、流式 WAV 落盘。
-- 未实现：VibeVoice-ASR 调用、会议转写数据库、摘要接口、DOA 元数据上传。
+- 已实现：会议生命周期、帧校验、序号丢失统计、流式 WAV 落盘、复用设备 ASR 的实时/最终转写、已登记声纹识别、会议数据库、AI 纪要。
+- 管理后台接口：`GET /api/user/meetings`、`GET /api/user/meetings/:id`。
+- 未实现：未登记参会者的 A/B/C 聚类式说话人分离、DOA 元数据上传、会议音频在线播放。
 - 固件接入时必须让会议采集链路取 MIC1 与 MIC2（EchoEar 的 TDM slot 0 和 slot 2），不能把现有 AEC 的 MIC1 + MIC3 直接声明为双麦。
 - 会议模式建议与普通小智对话互斥；会议数据不要送入现有 `ChatManager`，否则会受到 VAD、`listen` 状态和单声道 ASR 的影响。

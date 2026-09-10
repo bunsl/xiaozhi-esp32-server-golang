@@ -60,6 +60,7 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		AudioBasePath: audioBasePath,
 		MaxFileSize:   maxFileSize,
 	}
+	meetingController := &controllers.MeetingController{DB: db}
 
 	// API路由组
 	api := r.Group("/api")
@@ -87,7 +88,8 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 			internal.POST("/internal/history/messages", chatHistoryController.SaveMessage)                         // 保存消息（内部服务接口）
 			internal.PUT("/internal/history/messages/:message_id/audio", chatHistoryController.UpdateMessageAudio) // 更新消息音频（内部服务接口）
 			internal.GET("/internal/history/messages", chatHistoryController.GetMessagesForInit)                   // 获取消息（用于初始化加载，内部服务接口）
-			internal.POST("/internal/pool/stats", poolStatsController.ReportPoolStats)                             // 上报资源池统计数据（内部服务接口）
+			internal.POST("/internal/meetings", meetingController.UpsertInternal)
+			internal.POST("/internal/pool/stats", poolStatsController.ReportPoolStats) // 上报资源池统计数据（内部服务接口）
 			internal.POST("/internal/devices/:device_name/switch-role", adminController.SwitchDeviceRoleByNameInternal)
 			internal.POST("/internal/devices/:device_name/restore-default-role", adminController.RestoreDeviceDefaultRoleInternal)
 		}
@@ -218,6 +220,10 @@ func Setup(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				user.GET("/history/export", chatHistoryController.ExportMessages)
 				user.GET("/history/agents/:agent_id/messages", chatHistoryController.GetMessagesByAgent)
 				user.GET("/history/messages/:id/audio", chatHistoryController.GetAudioFile)
+
+				// 会议记录
+				user.GET("/meetings", meetingController.List)
+				user.GET("/meetings/:id", meetingController.Get)
 			}
 
 			// 外部OpenAPI路由（支持JWT或API Token）

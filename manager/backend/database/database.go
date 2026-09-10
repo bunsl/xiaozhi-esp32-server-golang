@@ -69,6 +69,8 @@ func Init(cfg config.DatabaseConfig) *gorm.DB {
 		&models.GlobalRole{},
 		&models.Role{}, // 新增：统一角色表
 		&models.ChatMessage{},
+		&models.Meeting{},
+		&models.MeetingSegment{},
 		&models.SpeakerGroup{},
 		&models.SpeakerSample{},
 		&models.VoiceClone{},

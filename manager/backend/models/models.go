@@ -314,6 +314,41 @@ type ChatMessage struct {
 	CreatedAt time.Time `json:"created_at" gorm:"index:idx_created_at"`
 }
 
+// Meeting stores one device meeting and its generated artifacts.
+type Meeting struct {
+	ID            uint       `json:"id" gorm:"primarykey"`
+	UserID        uint       `json:"user_id" gorm:"not null;index"`
+	DeviceID      string     `json:"device_id" gorm:"type:varchar(100);not null;index;uniqueIndex:idx_meeting_device_id,priority:1"`
+	MeetingID     string     `json:"meeting_id" gorm:"type:varchar(100);not null;uniqueIndex:idx_meeting_device_id,priority:2"`
+	Status        string     `json:"status" gorm:"type:varchar(24);not null;default:'recording';index"`
+	AudioPath     string     `json:"-" gorm:"type:varchar(512)"`
+	SampleRate    int        `json:"sample_rate"`
+	Channels      int        `json:"channels"`
+	DurationMs    int64      `json:"duration_ms"`
+	Frames        uint64     `json:"frames"`
+	MissingFrames uint64     `json:"missing_frames"`
+	Transcript    string     `json:"transcript" gorm:"type:longtext"`
+	Summary       string     `json:"summary" gorm:"type:longtext"`
+	SpeakerCount  int        `json:"speaker_count"`
+	Error         string     `json:"error" gorm:"type:text"`
+	StartedAt     time.Time  `json:"started_at" gorm:"index"`
+	EndedAt       *time.Time `json:"ended_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+type MeetingSegment struct {
+	ID           uint      `json:"id" gorm:"primarykey"`
+	MeetingRefID uint      `json:"meeting_ref_id" gorm:"not null;index"`
+	SpeakerID    string    `json:"speaker_id" gorm:"type:varchar(100);index"`
+	SpeakerName  string    `json:"speaker_name" gorm:"type:varchar(100)"`
+	Text         string    `json:"text" gorm:"type:text;not null"`
+	StartMs      int64     `json:"start_ms"`
+	EndMs        int64     `json:"end_ms"`
+	Confidence   float32   `json:"confidence"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
 // TableName 指定表名
 func (ChatMessage) TableName() string {
 	return "chat_messages"

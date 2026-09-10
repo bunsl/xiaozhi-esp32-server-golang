@@ -64,7 +64,8 @@ const commonItems = computed(() => {
   return [
     { title: '我的角色', desc: '管理个人角色模板', path: '/user/roles' },
     { title: '声音复刻', desc: '管理声音复刻任务', path: '/voice-clones' },
-    { title: '我的知识库', desc: '管理知识库文档', path: '/user/knowledge-bases' }
+    { title: '我的知识库', desc: '管理知识库文档', path: '/user/knowledge-bases' },
+    { title: '会议记录', desc: '查看转写和 AI 纪要', path: '/user/meetings' }
   ]
 })
 

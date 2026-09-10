@@ -1,26 +1,34 @@
 package meeting
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
+
+	meetingdata "xiaozhi-esp32-server-golang/internal/data/meeting"
+	"xiaozhi-esp32-server-golang/internal/util"
 )
 
 const (
-	MessageTypeStart = "meeting.start"
-	MessageTypeStop  = "meeting.stop"
-	MessageTypeReady = "meeting.ready"
-	MessageTypeError = "meeting.error"
+	MessageTypeStart      = "meeting.start"
+	MessageTypeStop       = "meeting.stop"
+	MessageTypeReady      = "meeting.ready"
+	MessageTypeError      = "meeting.error"
+	MessageTypeTranscript = "meeting.transcript"
 )
 
 type Handler struct {
 	Upgrader        websocket.Upgrader
 	SessionConfig   SessionConfig
 	MaxFramePayload int
+	records         *meetingdata.Client
 }
 
 func NewHandler(storageDir string) *Handler {
@@ -32,6 +40,7 @@ func NewHandler(storageDir string) *Handler {
 		},
 		SessionConfig:   SessionConfig{StorageDir: storageDir},
 		MaxFramePayload: 1024 * 1024,
+		records:         meetingdata.NewClient(util.GetBackendURL(), util.GetManagerAuthToken()),
 	}
 }
 
@@ -51,14 +60,25 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+	var writeMu sync.Mutex
+	writeJSON := func(value interface{}) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		return conn.WriteJSON(value)
+	}
+	writeError := func(message string) {
+		_ = writeJSON(map[string]string{"type": MessageTypeError, "error": message})
+	}
 
 	var session *Session
+	var transcriber *Transcriber
 	defer func() {
 		if session != nil {
 			if result, stopErr := session.Stop(); stopErr != nil {
 				log.Printf("会议连接断开，WAV 收尾失败: device=%s error=%v", deviceID, stopErr)
 			} else {
 				log.Printf("会议连接断开，已保存 WAV: device=%s meeting=%s path=%s bytes=%d", deviceID, result.MeetingID, result.Path, result.Bytes)
+				h.finalize(result, transcriber)
 			}
 		}
 	}()
@@ -78,13 +98,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				StartRequest
 			}
 			if err := json.Unmarshal(data, &envelope); err != nil {
-				h.writeError(conn, "invalid JSON: "+err.Error())
+				writeError("invalid JSON: " + err.Error())
 				continue
 			}
 			switch envelope.Type {
 			case MessageTypeStart:
 				if session != nil {
-					h.writeError(conn, "meeting is already active")
+					writeError("meeting is already active")
 					continue
 				}
 				request := envelope.StartRequest
@@ -96,11 +116,26 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				newSession, startErr := NewSession(h.SessionConfig, deviceID, envelope.MeetingID, request)
 				if startErr != nil {
-					h.writeError(conn, startErr.Error())
+					writeError(startErr.Error())
 					continue
 				}
 				session = newSession
-				_ = conn.WriteJSON(map[string]interface{}{
+				go h.saveRecord(meetingdata.Record{
+					DeviceID: deviceID, MeetingID: envelope.MeetingID, Status: "recording",
+					AudioPath: newSession.path, SampleRate: request.SampleRate, Channels: request.Channels,
+					StartedAt: newSession.startedAt,
+				})
+				transcriber, err = NewTranscriber(deviceID, func(text, speaker string, isFinal bool) error {
+					return writeJSON(map[string]interface{}{
+						"type": MessageTypeTranscript, "meeting_id": envelope.MeetingID,
+						"text": text, "speaker": speaker, "is_final": isFinal,
+					})
+				})
+				if err != nil {
+					log.Printf("会议实时转写未启用: device=%s error=%v", deviceID, err)
+					transcriber = nil
+				}
+				_ = writeJSON(map[string]interface{}{
 					"type":        MessageTypeReady,
 					"meeting_id":  envelope.MeetingID,
 					"sample_rate": request.SampleRate,
@@ -109,36 +144,106 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				})
 			case MessageTypeStop:
 				if session == nil {
-					h.writeError(conn, "meeting is not active")
+					writeError("meeting is not active")
 					continue
 				}
 				result, stopErr := session.Stop()
 				if stopErr != nil {
-					h.writeError(conn, stopErr.Error())
+					writeError(stopErr.Error())
 					return
 				}
-				_ = conn.WriteJSON(map[string]interface{}{"type": MessageTypeStop, "result": result})
+				_ = writeJSON(map[string]interface{}{"type": MessageTypeStop, "result": result})
+				session = nil
+				h.finalize(result, transcriber)
+				transcriber = nil
 				return
 			default:
-				h.writeError(conn, fmt.Sprintf("unsupported meeting message type: %q", envelope.Type))
+				writeError(fmt.Sprintf("unsupported meeting message type: %q", envelope.Type))
 			}
 		case websocket.BinaryMessage:
 			if session == nil {
-				h.writeError(conn, "send meeting.start before audio")
+				writeError("send meeting.start before audio")
 				continue
 			}
 			frame, decodeErr := DecodeFrame(data, h.MaxFramePayload)
 			if decodeErr != nil {
-				h.writeError(conn, decodeErr.Error())
+				writeError(decodeErr.Error())
 				continue
 			}
 			if writeErr := session.WriteFrame(frame); writeErr != nil {
-				h.writeError(conn, writeErr.Error())
+				writeError(writeErr.Error())
 				return
 			}
+			if transcriber != nil {
+				transcriber.Feed(frame, session.channels)
+			}
 		default:
-			h.writeError(conn, "unsupported WebSocket message type")
+			writeError("unsupported WebSocket message type")
 		}
+	}
+}
+
+func (h *Handler) finalize(result Result, transcriber *Transcriber) {
+	go func() {
+		record := meetingdata.Record{
+			DeviceID: result.DeviceID, MeetingID: result.MeetingID, Status: "transcribing",
+			AudioPath: result.Path, SampleRate: result.SampleRate, Channels: result.Channels,
+			DurationMs: result.DurationMs, Frames: result.Frames, MissingFrames: result.MissingFrames,
+			StartedAt: result.StartedAt, EndedAt: &result.EndedAt,
+		}
+		if transcriber == nil {
+			record.Status = "completed"
+			h.saveRecord(record)
+			return
+		}
+		transcriber.Close()
+		record.Transcript, record.Segments = transcriberSnapshot(transcriber)
+		record.SpeakerCount = countSpeakers(record.Segments)
+		record.Status = "summarizing"
+		h.saveRecord(record)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+		summary, err := transcriber.Summarize(ctx, record.Transcript)
+		cancel()
+		if err != nil {
+			record.Status = "completed"
+			record.Error = "AI 纪要生成失败: " + err.Error()
+		} else {
+			record.Status = "completed"
+			record.Summary = summary
+		}
+		h.saveRecord(record)
+	}()
+}
+
+func countSpeakers(segments []meetingdata.Segment) int {
+	seen := make(map[string]struct{})
+	for _, segment := range segments {
+		name := strings.TrimSpace(segment.SpeakerName)
+		if name != "" {
+			seen[name] = struct{}{}
+		}
+	}
+	return len(seen)
+}
+
+func transcriberSnapshot(transcriber *Transcriber) (string, []meetingdata.Segment) {
+	transcript, source := transcriber.Snapshot()
+	segments := make([]meetingdata.Segment, len(source))
+	for i, segment := range source {
+		segments[i] = meetingdata.Segment{
+			SpeakerID: segment.SpeakerID, SpeakerName: segment.SpeakerName, Text: segment.Text,
+			StartMs: segment.StartMs, EndMs: segment.EndMs, Confidence: segment.Confidence,
+		}
+	}
+	return transcript, segments
+}
+
+func (h *Handler) saveRecord(record meetingdata.Record) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := h.records.Upsert(ctx, record); err != nil {
+		log.Printf("保存会议记录失败: device=%s meeting=%s error=%v", record.DeviceID, record.MeetingID, err)
 	}
 }
 
