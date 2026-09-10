@@ -1,0 +1,27 @@
+# 用本地源码构建替换 docker-compose.yml 中的预编译镜像。
+# 端口、mysql、qdrant、voice-server 与数据卷完全沿用基础文件，设备地址无需改动。
+#
+# 用法（在仓库根目录执行）：
+#   sudo docker compose \
+#     -f docker/docker-composer/docker-compose.yml \
+#     -f docker/docker-composer/docker-compose.build.yml \
+#     up -d --build main-server backend frontend
+
+services:
+  main-server:
+    image: xiaozhi_server:local
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.main
+
+  backend:
+    image: xiaozhi_manager_backend:local
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.backend
+
+  frontend:
+    image: xiaozhi_manager_frontend:local
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.frontend
