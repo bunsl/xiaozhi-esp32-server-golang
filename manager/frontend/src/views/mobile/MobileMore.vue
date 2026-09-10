@@ -57,7 +57,8 @@ const commonItems = computed(() => {
   if (authStore.isAdmin) {
     return [
       { title: '配置向导', desc: '首次部署推荐从这里开始', path: '/admin/config-wizard' },
-      { title: '资源池统计', desc: '查看系统资源池使用情况', path: '/admin/pool-stats' }
+      { title: '资源池统计', desc: '查看系统资源池使用情况', path: '/admin/pool-stats' },
+      { title: '会议记录', desc: '查看转写和 AI 纪要', path: '/user/meetings' }
     ]
   }
 
