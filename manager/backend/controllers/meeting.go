@@ -121,11 +121,24 @@ func (c *MeetingController) List(ctx *gin.Context) {
 		pageSize = 20
 	}
 	query := c.DB.Model(&models.Meeting{}).Where("user_id = ?", userID)
+	if keyword := strings.TrimSpace(ctx.Query("keyword")); keyword != "" {
+		like := "%" + keyword + "%"
+		query = query.Where(
+			"(meeting_id LIKE ? OR device_id LIKE ? OR transcript LIKE ? OR summary LIKE ?)",
+			like, like, like, like,
+		)
+	}
 	if deviceID := strings.TrimSpace(ctx.Query("device_id")); deviceID != "" {
-		query = query.Where("device_id = ?", deviceID)
+		query = query.Where("device_id LIKE ?", "%"+deviceID+"%")
 	}
 	if status := strings.TrimSpace(ctx.Query("status")); status != "" {
 		query = query.Where("status = ?", status)
+	}
+	if startedAfter := strings.TrimSpace(ctx.Query("started_after")); startedAfter != "" {
+		query = query.Where("started_at >= ?", startedAfter)
+	}
+	if startedBefore := strings.TrimSpace(ctx.Query("started_before")); startedBefore != "" {
+		query = query.Where("started_at <= ?", startedBefore)
 	}
 	var total int64
 	query.Count(&total)

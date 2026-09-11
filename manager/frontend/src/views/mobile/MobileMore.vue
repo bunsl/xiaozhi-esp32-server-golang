@@ -58,7 +58,7 @@ const commonItems = computed(() => {
     return [
       { title: '配置向导', desc: '首次部署推荐从这里开始', path: '/admin/config-wizard' },
       { title: '资源池统计', desc: '查看系统资源池使用情况', path: '/admin/pool-stats' },
-      { title: '会议记录', desc: '查看转写和 AI 纪要', path: '/user/meetings' }
+      { title: '会议纪要', desc: '查看转写、发言人和 AI 纪要', path: '/user/meetings' }
     ]
   }
 
@@ -66,7 +66,7 @@ const commonItems = computed(() => {
     { title: '我的角色', desc: '管理个人角色模板', path: '/user/roles' },
     { title: '声音复刻', desc: '管理声音复刻任务', path: '/voice-clones' },
     { title: '我的知识库', desc: '管理知识库文档', path: '/user/knowledge-bases' },
-    { title: '会议记录', desc: '查看转写和 AI 纪要', path: '/user/meetings' }
+    { title: '会议纪要', desc: '查看转写、发言人和 AI 纪要', path: '/user/meetings' }
   ]
 })
 

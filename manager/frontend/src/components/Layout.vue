@@ -61,7 +61,7 @@
 
             <el-menu-item index="/user/meetings">
               <el-icon><Microphone /></el-icon>
-              <span>会议记录</span>
+              <span>会议纪要</span>
             </el-menu-item>
 
             <el-sub-menu v-if="authStore.isAdmin" index="/admin/service-config">

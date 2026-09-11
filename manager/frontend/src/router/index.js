@@ -278,13 +278,13 @@ const routes = [
         path: '/user/meetings',
         name: 'UserMeetings',
         component: () => import('../views/user/Meetings.vue'),
-        meta: { title: '会议记录' }
+        meta: { title: '会议纪要' }
       },
       {
         path: '/user/meetings/:id',
         name: 'UserMeetingDetail',
         component: () => import('../views/user/MeetingDetail.vue'),
-        meta: { title: '会议详情' }
+        meta: { title: '会议纪要详情' }
       },
       {
         path: 'user/roles',
