@@ -67,6 +67,12 @@ websocket:
 # 会议音频上传配置
 meeting:
   storage_dir: "data/meetings"  # 双麦 PCM 流式落盘目录
+  vad_rms_threshold: 0.008      # 分句能量阈值；噪声环境可适当提高
+  pre_roll_ms: 200              # 每句话保留的前导音频，避免吞掉首字
+  silence_ms: 600               # 连续静音多久后结束当前句
+  max_utterance_ms: 30000       # 单句最长时长，超过后强制切段
+  speaker_threshold: 0.6        # 已登记声纹识别阈值
+  diarization_threshold: 0.55   # 会内陌生人聚类阈值；越高越容易拆成不同人物
 
 # MQTT客户端配置（连接外部MQTT服务器）
 mqtt:

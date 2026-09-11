@@ -125,12 +125,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					AudioPath: newSession.path, SampleRate: request.SampleRate, Channels: request.Channels,
 					StartedAt: newSession.startedAt,
 				})
-				transcriber, err = NewTranscriber(deviceID, func(text, speaker string, isFinal bool) error {
-					return writeJSON(map[string]interface{}{
-						"type": MessageTypeTranscript, "meeting_id": envelope.MeetingID,
-						"text": text, "speaker": speaker, "is_final": isFinal,
+				transcriber, err = NewTranscriber(deviceID, envelope.MeetingID,
+					func(text, speaker string, isFinal bool, startMs, endMs int64) error {
+						return writeJSON(map[string]interface{}{
+							"type": MessageTypeTranscript, "meeting_id": envelope.MeetingID,
+							"text": text, "speaker": speaker, "is_final": isFinal,
+							"start_ms": startMs, "end_ms": endMs,
+						})
 					})
-				})
 				if err != nil {
 					log.Printf("会议实时转写未启用: device=%s error=%v", deviceID, err)
 					transcriber = nil

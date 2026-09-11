@@ -12,6 +12,7 @@ import (
 type AsrServerProvider struct {
 	streamingClient *StreamingClient
 	threshold       float32 // 声纹识别阈值
+	uid             string
 	isActive        bool
 	mutex           sync.Mutex
 }
@@ -44,9 +45,11 @@ func NewAsrServerProvider(config map[string]interface{}) (*AsrServerProvider, er
 	}
 
 	streamingClient := NewStreamingClient(baseURL)
+	uid, _ := config["uid"].(string)
 	return &AsrServerProvider{
 		streamingClient: streamingClient,
 		threshold:       threshold,
+		uid:             uid,
 		isActive:        false,
 	}, nil
 }
@@ -60,7 +63,7 @@ func (p *AsrServerProvider) StartStreaming(ctx context.Context, sampleRate int, 
 		return nil // 已经激活，直接返回
 	}
 
-	err := p.streamingClient.Connect(sampleRate, agentId, p.threshold)
+	err := p.streamingClient.Connect(sampleRate, agentId, p.uid, p.threshold)
 	if err != nil {
 		log.Warnf("启动声纹识别流失败: %v", err)
 		return err

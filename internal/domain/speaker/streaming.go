@@ -64,7 +64,7 @@ func deriveWebSocketURL(baseURL string) string {
 }
 
 // Connect 连接到声纹识别服务的 WebSocket
-func (sc *StreamingClient) Connect(sampleRate int, agentId string, threshold float32) error {
+func (sc *StreamingClient) Connect(sampleRate int, agentId, uid string, threshold float32) error {
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
 
@@ -85,6 +85,9 @@ func (sc *StreamingClient) Connect(sampleRate int, agentId string, threshold flo
 	wsURL := fmt.Sprintf("%s?sample_rate=%d", sc.wsURL, sampleRate)
 	if agentId != "" {
 		wsURL += fmt.Sprintf("&agent_id=%s", url.QueryEscape(agentId))
+	}
+	if uid != "" {
+		wsURL += fmt.Sprintf("&uid=%s", url.QueryEscape(uid))
 	}
 	// 如果阈值大于 0，则传递阈值参数
 	if threshold > 0 {

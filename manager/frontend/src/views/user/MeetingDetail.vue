@@ -123,7 +123,7 @@
             >
               <div class="segment-meta">
                 <span class="speaker-name">{{ speakerLabel(segment) }}</span>
-                <span>{{ formatOffset(segment.start_ms) }}</span>
+                <span>{{ formatRange(segment.start_ms, segment.end_ms) }}</span>
               </div>
               <p v-html="highlight(segment.text)" />
             </article>
@@ -233,6 +233,10 @@ const formatOffset = value => {
   const seconds = Math.max(0, Math.floor((value || 0) / 1000))
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
+const formatRange = (start, end) => {
+  const startText = formatOffset(start)
+  return end > start ? `${startText}–${formatOffset(end)}` : startText
+}
 const statusText = status => ({
   recording: '录音中', transcribing: '转写中', summarizing: '生成纪要', completed: '已完成', failed: '失败'
 }[status] || status || '未知')
@@ -251,7 +255,7 @@ const highlight = text => {
 }
 
 const transcriptText = () => segments.value
-  .map(segment => `[${formatOffset(segment.start_ms)}] ${speakerLabel(segment)}：${segment.text}`)
+  .map(segment => `[${formatRange(segment.start_ms, segment.end_ms)}] ${speakerLabel(segment)}：${segment.text}`)
   .join('\n')
 
 const fullMarkdown = () => {
